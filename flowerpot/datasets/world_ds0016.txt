@@ -1,7 +1,0 @@
-{
-  "dimensionality": 1,
-  "world_size": [
-    10
-  ],
-  "environment_filename": null
-}
