@@ -1,10 +1,6 @@
-import os
-import sys
 import json
-import glob
-
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 def plot_organism_field(time, organism_paths, world_paths, field):
     image = []
@@ -19,7 +15,8 @@ def plot_organism_field(time, organism_paths, world_paths, field):
             if field == 'alive' and organism_dict['alive'] \
             or field == 'old_age' and organism_dict['cause_of_death'] == 'old_age' \
             or field == 'thirst' and organism_dict['cause_of_death'] == 'thirst' \
-            or field == 'hunger' and organism_dict['cause_of_death'] == 'hunger':
+            or field == 'hunger' and organism_dict['cause_of_death'] == 'hunger' \
+            or field == 'births' and organism_dict['age'] == 0:
                 matching_organisms.append(organism_dict['position'])
 
         frequency_weights = np.zeros(world['world_size'][0])
