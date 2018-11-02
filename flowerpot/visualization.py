@@ -2,6 +2,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def plot_organism_field(time, organism_paths, world_paths, field):
     image = []
     for i in range(time + 1):
