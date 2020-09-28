@@ -15,7 +15,7 @@ class Dataset(object):
     def __init__(self, dataset_fn):
         self.population_dict, self.world = blossom.dataset_io.load_universe(dataset_fn)
         self.position_hash_table = blossom.population_funcs.hash_by_position(
-            blossom.population_funcs.get_organism_list(self.populaiton_dict)
+            blossom.population_funcs.get_organism_list(self.population_dict)
         )
         self.current_time = self.world.current_time
 
