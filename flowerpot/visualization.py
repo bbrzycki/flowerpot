@@ -1,71 +1,77 @@
 import json
+import glob
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
+import blossom
 
 
-def plot_organism_field(time, organism_paths, world_paths, field):
-    image = []
-    for i in range(time + 1):
-        with open(organism_paths[i], 'r') as f:
-            organism_list = json.load(f)
-        with open(world_paths[i], 'r') as f:
-            world = json.load(f)
+class Dataset(object):
+    """
+    Single time snapshot of universe.
+    """
 
-        matching_organisms = []
-        for organism_dict in organism_list:
-            if field == 'alive' and organism_dict['alive'] \
-                    or field == 'old_age' \
-                        and organism_dict['cause_of_death'] == 'old_age' \
-                    or field == 'thirst' \
-                        and organism_dict['cause_of_death'] == 'thirst' \
-                    or field == 'hunger' \
-                        and organism_dict['cause_of_death'] == 'hunger' \
-                    or field == 'births' \
-                        and organism_dict['age'] == 0:
-                matching_organisms.append(organism_dict['position'])
+    def __init__(self, dataset_fn):
+        self.population_dict, self.world = blossom.dataset_io.load_universe(dataset_fn)
+        self.position_hash_table = blossom.population_funcs.hash_by_position(
+            blossom.population_funcs.get_organism_list(self.population_dict)
+        )
+        self.current_time = self.world.current_time
 
-        frequency_weights = np.zeros(world['world_size'][0])
-        for position in matching_organisms:
-            index = position[0]
-            frequency_weights[index] += 1
+    def plot_2d(self, label, attr_func):
+        """
+        attr_func is a function that accepts a Dataset object and a position,
+        and returns a quantity
+        """
+        temp_img = np.zeros(shape=self.world.world_size)
+        for i in range(temp_img.shape[0]):
+            for j in range(temp_img.shape[1]):
+                temp_img[i][j] += attr_func(ds=self,
+                                            position=(i, j))
 
-        image.append(frequency_weights)
-
-    plt.imshow(image, aspect='auto')
-    plt.colorbar()
-
-    if field == 'alive':
-        title = 'Living Organisms'
-    elif field == 'old_age':
-        title = 'Deaths from Old Age'
-    elif field == 'thirst':
-        title = 'Deaths from Thirst'
-    elif field == 'hunger':
-        title = 'Deaths from Hunger'
-    elif field == 'births':
-        title = 'Organism Births'
-    else:
-        title = field
-    plt.title('%s' % title)
+        plt.title(label)
+        plt.imshow(temp_img, interpolate='none')
+        plt.colorbar()
 
 
-def plot_world_field(time, world_paths, field):
-    image = []
-    for i in range(time + 1):
-        with open(world_paths[i], 'r') as f:
-            world = json.load(f)
+class TimeSeries(object):
+    """
+    Series of dataset objects for iterating over.
+    """
 
-        image.append(world[field])
+    def __init__(self, dataset_dir):
+        self.dataset_dir = Path(dataset_dir)
+        self.dataset_fns = sorted(self.dataset_dir.glob('*'))
+        self.index = 0
 
-    plt.imshow(image, aspect='auto')
-    plt.colorbar()
+    def __iter__(self):
+        return self
 
-    if field == 'water':
-        title = 'Water Supply'
-    elif field == 'food':
-        title = 'Food Supply'
-    elif field == 'obstacles':
-        title = 'Obstacles'
-    else:
-        title = field
-    plt.title('%s' % title)
+    def __next__(self):
+        try:
+            ds = Dataset(self.dataset_fns[self.index])
+        except IndexError:
+            raise StopIteration
+        self.index += 1
+        return ds
+
+    def plot_ts(self, attr_funcs):
+        """
+        attr_funcs is a list of tuples (label, function), where the function
+        calculates desired attributes given a Dataset at each timestep in the
+        simulation.
+        """
+        attr_vals = {label: [] for label, func in attr_funcs}
+        for ds_fn in self.dataset_fns:
+            ds = Dataset(ds_fn)
+            for label, attr_func in attr_funcs:
+                attr_vals[label].append(attr_func(ds))
+
+        for label in attr_vals:
+            plt.plot(attr_vals[label], label=label)
+        plt.plot([0] * len(attr_vals[label]), 'k--')
+
+        plt.xlabel('Timestep')
+        plt.ylabel('Count')
+        plt.legend()
